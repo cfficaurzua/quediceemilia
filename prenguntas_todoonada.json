@@ -1,0 +1,26 @@
+[
+    {
+        "puntaje": 50,
+        "pregunta": "Menciona algo que tenga perlas",
+        "respuesta": "Collar",
+        "fondo": "50.png"
+    },
+    {
+        "puntaje": 100,
+        "pregunta": "¿Cómo notas que le caes mal a un perro?",
+        "respuesta": "Ladra",
+        "fondo": "100.png"
+    },
+    {
+        "puntaje": 200,
+        "pregunta": "¿En qué podría trabajar una persona copuchenta?",
+        "respuesta": "Televisión / Noticias",
+        "fondo": "200.png"
+    },
+    {
+        "puntaje": 400,
+        "pregunta": "¿Qué no puede faltar en una ensalada cara?",
+        "respuesta": "Tomate cherry",
+        "fondo": "400.png"
+    }
+]

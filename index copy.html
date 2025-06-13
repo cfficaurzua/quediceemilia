@@ -1,0 +1,644 @@
+<!DOCTYPE html>
+<html lang="es">
+    <head>
+        <meta charset="UTF-8" />
+        <title>Qué Dice Chile - Juego</title>
+        <style>
+            html,
+            body {
+                margin: 0;
+                padding: 0;
+                overflow: hidden;
+                background: black;
+            }
+            canvas {
+                display: block;
+            }
+        </style>
+    </head>
+    <body>
+        <video
+            id="splash"
+            src="splashscreen.mp4"
+            autoplay
+            muted
+            playsinline
+            style="
+                position: absolute;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                width: 100vw;
+                height: 100vh;
+                object-fit: cover;
+                z-index: 10;
+                background: black;
+            "
+        ></video>
+        <canvas id="juego"></canvas>
+        <img
+            id="todoSplash"
+            src="todoonadasplash.png"
+            style="
+                display: none;
+                position: absolute;
+                width: 100vw;
+                height: 100vh;
+                object-fit: cover;
+                z-index: 50;
+            "
+        />
+        <audio id="music" src="music.mp3" loop></audio>
+        <audio id="sfx-ok" src="reveal.wav"></audio>
+        <audio id="sfx-x" src="x.wav"></audio>
+        <div
+            id="pregunta"
+            style="
+                position: absolute;
+                top: 10%;
+                width: 100%;
+                text-align: center;
+                font-size: 2em;
+                color: white;
+            "
+        ></div>
+        <div
+            id="respuesta"
+            style="
+                position: absolute;
+                top: 50%;
+                width: 100%;
+                text-align: center;
+                font-size: 5em;
+                color: white;
+                background-color: black;
+            "
+        ></div>
+        <script>
+            const preguntas = [
+                {
+                    texto: "¿Que Sonido o ruido no te deja dormir por las noches?",
+                    respuestas: [
+                        { texto: "Insectos", puntaje: 23 },
+                        { texto: "Ladridos / Perros", puntaje: 18 },
+                        { texto: "Autos", puntaje: 15 },
+                        { texto: "Ronquidos", puntaje: 13 },
+                        { texto: "Gotera", puntaje: 11 },
+                        { texto: "Música", puntaje: 10 },
+                        { texto: "Bocinas", puntaje: 8 },
+                        { texto: "Gatos", puntaje: 2 },
+                    ],
+                },
+                {
+                    texto: "¿A que preparación le pones mayonesa?",
+                    respuestas: [
+                        { texto: "Completo", puntaje: 28 },
+                        { texto: "Choripán", puntaje: 21 },
+                        { texto: "Sopaipilla", puntaje: 17 },
+                        { texto: "Churrasco", puntaje: 13 },
+                        { texto: "Hamburguesa", puntaje: 9 },
+                        { texto: "Chaparrita", puntaje: 7 },
+                        { texto: "Ensalada", puntaje: 3 },
+                        { texto: "Locos", puntaje: 5 },
+                    ],
+                },
+                {
+                    texto: "¿Cómo te das cuenta de que una persona tiene Zapatillas nuevas?",
+                    respuestas: [
+                        { texto: "están limpias", puntaje: 43 },
+                        { texto: "resalta el color", puntaje: 28 },
+                        {
+                            texto: "Subió una historia / foto",
+                            puntaje: 15,
+                        },
+                        { texto: "Lo dice / luce", puntaje: 9 },
+                        { texto: "No sacó la etiqueta", puntaje: 5 },
+                    ],
+                },
+                {
+                    texto: "Si fueras a recorrer el mundo ¿que es lo primero que meterías en la maleta?",
+                    respuestas: [
+                        { texto: "zapatillas", puntaje: 22 },
+                        { texto: "ropa interior", puntaje: 20 },
+                        { texto: "cámara", puntaje: 18 },
+                        {
+                            texto: "bloqueador /bronceador",
+                            puntaje: 15,
+                        },
+                        { texto: "documentos", puntaje: 11 },
+                        { texto: "secador", puntaje: 7 },
+                        { texto: "celular", puntaje: 4 },
+                    ],
+                },
+                {
+                    texto: "Qué color te recuerda más al colegio, ¿Rojo o Azul?",
+                    respuestas: [{ texto: "Rojo", puntaje: 58 }],
+                },
+                {
+                    texto: "Si roberto carlos tuviera un millón de amigos, ¿Qué podría hacer?",
+                    respuestas: [
+                        { texto: "Una fiesta", puntaje: 37 },
+                        { texto: "Cantar", puntaje: 28 },
+                        { texto: "Asado", puntaje: 14 },
+                        { texto: "pedirles dinero", puntaje: 9 },
+                        { texto: "sacarse una foto", puntaje: 6 },
+                        { texto: "viajar", puntaje: 4 },
+                    ],
+                },
+                {
+                    texto: "¿En que situación te frotas las manos?",
+                    respuestas: [
+                        { texto: "hace frio", puntaje: 42 },
+                        { texto: "lavarme las manos", puntaje: 21 },
+                        { texto: "nervios", puntaje: 14 },
+                        { texto: "recibir dinero", puntaje: 10 },
+                        { texto: "me pegué /dolor", puntaje: 7 },
+                        { texto: "me pican", puntaje: 3 },
+                    ],
+                },
+                {
+                    texto: "¿que te gustaría hacer sobre una nube?",
+                    respuestas: [
+                        { texto: "dormir", puntaje: 27 },
+                        { texto: "volar", puntaje: 21 },
+                        { texto: "saltar", puntaje: 18 },
+                        { texto: "descansar", puntaje: 13 },
+                        { texto: "caminar", puntaje: 8 },
+                        { texto: "meditar", puntaje: 5 },
+                        { texto: "leer", puntaje: 4 },
+                        { texto: "hacer que llueva", puntaje: 3 },
+                    ],
+                },
+            ];
+
+            const preguntasTodoONada = [
+                {
+                    puntaje: 50,
+                    pregunta: "Menciona algo que tenga perlas",
+                    respuesta: "Collar",
+                    fondo: "50.png",
+                },
+                {
+                    puntaje: 100,
+                    pregunta: "¿Cómo notas que le caes mal a un perro?",
+                    respuesta: "Ladra",
+                    fondo: "100.png",
+                },
+                {
+                    puntaje: 200,
+                    pregunta: "¿En qué podría trabajar una persona copuchenta?",
+                    respuesta: "Televisión / Noticias",
+                    fondo: "200.png",
+                },
+                {
+                    puntaje: 400,
+                    pregunta: "¿Qué no puede faltar en una ensalada cara?",
+                    respuesta: "Tomate cherry",
+                    fondo: "400.png",
+                },
+            ];
+
+            const preguntasDineroRapido = [
+                {
+                    pregunta: "¿Algo que pones en el pan?",
+                    respuesta: "Mantequilla",
+                    puntaje: 100,
+                },
+                {
+                    pregunta: "¿Una prenda que usas en invierno?",
+                    respuesta: "Chaqueta",
+                    puntaje: 200,
+                },
+                {
+                    pregunta: "¿Qué haces cuando estás feliz?",
+                    respuesta: "Sonreír",
+                    puntaje: 300,
+                },
+                {
+                    pregunta: "¿Algo que hay en la cocina?",
+                    respuesta: "Cuchara",
+                    puntaje: 400,
+                },
+                {
+                    pregunta: "¿Una fruta tropical?",
+                    respuesta: "Piña",
+                    puntaje: 500,
+                },
+            ];
+            const splashVideo = document.getElementById("splash");
+            const canvas = document.getElementById("juego");
+            const ctx = canvas.getContext("2d");
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+
+            const background = new Image();
+            background.src = "backdrop.png";
+
+            const splash = new Image();
+            splash.src = "splashscreen.png";
+
+            const xSprite = new Image();
+            xSprite.src = "x.png";
+
+            const music = document.getElementById("music");
+            const sfxOk = document.getElementById("sfx-ok");
+            const sfxX = document.getElementById("sfx-x");
+
+            let currentScene = "splash";
+            let dineroRapidoIndex = 0;
+            let dineroRapidoTimer = 20;
+            let dineroRapidoScore = 0;
+            let dineroRapidoInterval = null;
+            let currentTodoIndex = 0;
+            let preguntaActual = 0;
+            let respuestasMostradas = Array(8).fill(false);
+            let animaciones = Array(8).fill(null);
+            let showX = false;
+            let xTimer = 0;
+            let xCount = 0;
+            let lastSpaceTime = 0;
+            let xMultiple = 1;
+            let scoreA = 0;
+            let scoreB = 0;
+            let lastAnswerIndex = null;
+
+            async function comenzar() {
+                requestAnimationFrame(loop);
+                document.addEventListener("keydown", handleKeyPress);
+            }
+
+            function iniciarDineroRapido() {
+                currentScene = "dineroRapido";
+                dineroRapidoIndex = 0;
+                dineroRapidoScore = 0;
+                dineroRapidoTimer = 20;
+                mostrarPreguntaDineroRapido();
+
+                dineroRapidoInterval = setInterval(() => {
+                    dineroRapidoTimer--;
+                    if (dineroRapidoTimer <= 0) {
+                        clearInterval(dineroRapidoInterval);
+                        alert(
+                            `Tiempo agotado. Puntaje ganado: ${dineroRapidoScore}`
+                        );
+                        currentScene = "todoonada"; // o donde quieras continuar
+                        mostrarPreguntaTodoONada();
+                    }
+                }, 1000);
+            }
+            function mostrarPreguntaDineroRapido() {
+                const p = preguntasDineroRapido[dineroRapidoIndex];
+                document.getElementById("pregunta").textContent = p.pregunta;
+                document.getElementById("respuesta").textContent = "";
+            }
+            function iniciarTodoONada() {
+                currentTodoIndex = 0;
+                document.getElementById("todoSplash").style.display = "block";
+                setTimeout(() => {
+                    document.getElementById("todoSplash").style.display =
+                        "none";
+                    mostrarPreguntaTodoONada();
+                }, 3000);
+            }
+
+            function mostrarPreguntaTodoONada() {
+                const p = preguntasTodoONada[currentTodoIndex];
+                document.body.style.backgroundImage = `url(${p.fondo})`;
+                document.body.style.backgroundSize = "contain";
+                document.body.style.backgroundRepeat = "no-repeat";
+                document.body.style.backgroundPosition = "center";
+                document.body.style.backgroundColor = "black";
+                document.getElementById("pregunta").textContent = p.pregunta;
+                document.getElementById("respuesta").textContent = "";
+                document.getElementById(
+                    "puntaje"
+                ).textContent = `Equipo A: ${scoreA} — Equipo B: ${scoreB}`;
+                lastAnswerIndex = null;
+            }
+
+            function revelarRespuesta() {
+                const p = preguntasTodoONada[current];
+                new Audio("reveal.wav").play();
+                document.getElementById("respuesta").textContent = p.respuesta;
+                total += p.puntaje;
+                document.getElementById(
+                    "puntaje"
+                ).textContent = `Total: ${total}`;
+            }
+            function siguiente() {
+                current++;
+                if (current < preguntasTodoONada.length) {
+                    mostrarPregunta();
+                } else {
+                    alert(`Juego terminado. Puntaje total: ${total}`);
+                }
+            }
+
+            function drawSplash() {
+                if (!splash.complete) return;
+                ctx.drawImage(splash, 0, 0, canvas.width, canvas.height);
+                ctx.fillStyle = "white";
+                ctx.font = "30px sans-serif";
+                ctx.textAlign = "center";
+                ctx.fillText(
+                    "Presiona cualquier tecla para comenzar",
+                    canvas.width / 2,
+                    canvas.height - 50
+                );
+            }
+
+            function drawGame() {
+                ctx.drawImage(background, 0, 0, canvas.width, canvas.height);
+                const pregunta = preguntas[preguntaActual];
+
+                const col1X = canvas.width * 0.25;
+                const col2X = canvas.width * 0.75;
+                const startY = 180;
+                const spacingY = 115;
+
+                ctx.fillStyle = "white";
+                ctx.font = "32px sans-serif";
+                ctx.textAlign = "center";
+                ctx.fillText(
+                    pregunta.texto,
+                    canvas.width / 2,
+                    canvas.height - 60
+                );
+
+                pregunta.respuestas.forEach((r, i) => {
+                    const col = i < 4 ? col1X : col2X;
+                    const y = startY + (i % 4) * spacingY;
+
+                    if (respuestasMostradas[i]) {
+                        let alpha = 1;
+                        let scale = 1;
+
+                        if (animaciones[i]) {
+                            alpha = animaciones[i].alpha;
+                            scale = animaciones[i].scale;
+                            animaciones[i].alpha = Math.min(1, alpha + 0.05);
+                            animaciones[i].scale = Math.min(1, scale + 0.05);
+                            if (alpha >= 1 && scale >= 1) {
+                                animaciones[i] = null;
+                            }
+                        }
+
+                        ctx.save();
+                        ctx.globalAlpha = alpha;
+                        ctx.translate(col, y + 10);
+                        ctx.scale(scale, scale);
+                        ctx.fillStyle = "white";
+                        ctx.font = "32px sans-serif";
+                        ctx.textAlign = "center";
+                        ctx.fillText(`${r.toUpperCase()}`, 0, 0);
+                        ctx.restore();
+                    } else {
+                        ctx.fillStyle = "white";
+                        ctx.font = "32px sans-serif";
+                        ctx.fillText(`${i + 1}`, col, y + 10);
+                    }
+                });
+
+                if (showX) {
+                    const size = 500;
+                    const centerX = canvas.width / 2;
+                    const centerY = canvas.height / 2;
+                    const gap = size + 40;
+                    let positions = [];
+
+                    if (xMultiple === 1) {
+                        positions = [centerX - size / 2];
+                    } else if (xMultiple === 2) {
+                        positions = [
+                            centerX - gap / 2 - size / 2,
+                            centerX + gap / 2 - size / 2,
+                        ];
+                    } else if (xMultiple === 3) {
+                        positions = [
+                            centerX - gap - size / 2,
+                            centerX - size / 2,
+                            centerX + gap - size / 2,
+                        ];
+                    }
+
+                    positions.forEach((x) => {
+                        ctx.drawImage(
+                            xSprite,
+                            x,
+                            centerY - size / 2,
+                            size,
+                            size
+                        );
+                    });
+                }
+
+                ctx.fillStyle = "white";
+                ctx.font = "bold 42px sans-serif";
+                ctx.textAlign = "left";
+                ctx.fillText(`Equipo A: ${scoreA}`, 20, canvas.height - 20);
+                ctx.textAlign = "right";
+                ctx.fillText(
+                    `Equipo B: ${scoreB}`,
+                    canvas.width - 20,
+                    canvas.height - 20
+                );
+                if ((currentScene = "dineroRapido")) {
+                    ctx.fillStyle = "yellow";
+                    ctx.font = "bold 48px sans-serif";
+                    ctx.textAlign = "center";
+                    ctx.fillText(
+                        `⏳ ${dineroRapidoTimer}s`,
+                        canvas.width / 2,
+                        100
+                    );
+                }
+            }
+
+            function loop() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+                if (currentScene === "splash") {
+                    drawSplash();
+                } else if (currentScene === "game") {
+                    drawGame();
+                    if (showX) {
+                        xTimer--;
+                        if (xTimer <= 0) showX = false;
+                    }
+                }
+
+                requestAnimationFrame(loop);
+            }
+
+            function startGame() {
+                if (currentScene !== "splash") return;
+                currentScene = "game";
+
+                splashVideo.pause();
+                splashVideo.remove();
+
+                music.play().catch(console.warn);
+                setTimeout(gradualVolumeFade, 1000);
+            }
+
+            splashVideo.addEventListener("ended", () => {
+                splashVideo.style.display = "none";
+            });
+
+            function gradualVolumeFade() {
+                const targetVolume = 0.1;
+                const duration = 20000;
+                const steps = 60;
+                let step = 0;
+                const volumeStep = (music.volume - targetVolume) / steps;
+
+                const interval = setInterval(() => {
+                    step++;
+                    music.volume = Math.max(
+                        targetVolume,
+                        music.volume - volumeStep
+                    );
+                    if (step >= steps) clearInterval(interval);
+                }, duration / steps);
+            }
+
+            function handleKeyPress(e) {
+                if (currentScene === "splash") {
+                    startGame();
+                    return;
+                }
+                if (e.key === "d") iniciarDineroRapido();
+
+                if (currentScene === "dineroRapido" && e.key === "Enter") {
+                    const input = prompt("Respuesta:");
+                    const correct =
+                        preguntasDineroRapido[
+                            dineroRapidoIndex
+                        ].respuesta.toLowerCase();
+                    if (input && input.toLowerCase() === correct) {
+                        dineroRapidoScore +=
+                            preguntasDineroRapido[dineroRapidoIndex].puntaje;
+                        sfxOk.currentTime = 0;
+                        sfxOk.play();
+                    } else {
+                        sfxX.currentTime = 0;
+                        sfxX.play();
+                    }
+
+                    dineroRapidoIndex++;
+                    if (dineroRapidoIndex < preguntasDineroRapido.length) {
+                        mostrarPreguntaDineroRapido();
+                    } else {
+                        clearInterval(dineroRapidoInterval);
+                        alert(
+                            `Fin de la ronda. Puntaje ganado: ${dineroRapidoScore}`
+                        );
+                        currentScene = "todoonada";
+                        mostrarPreguntaTodoONada();
+                    }
+                }
+                if (e.key === "1" && currentScene === "todoonada") {
+                    const p = preguntasTodoONada[currentTodoIndex];
+                    sfxOk.currentTime = 0;
+                    sfxOk.play();
+                    document.getElementById("respuesta").textContent =
+                        p.respuesta;
+                    lastAnswerIndex = true;
+                }
+                if (e.key >= "1" && e.key <= "8" && currentScene === "game") {
+                    const index = parseInt(e.key) - 1;
+                    if (!respuestasMostradas[index]) {
+                        respuestasMostradas[index] = true;
+                        animaciones[index] = { alpha: 0, scale: 0.8 };
+                        sfxOk.currentTime = 0;
+                        sfxOk.play();
+                        lastAnswerIndex = index;
+                    }
+                }
+
+                if (e.key === "a" || e.key === "b") {
+                    if (lastAnswerIndex !== null) {
+                        let puntos = 0;
+
+                        if (currentScene === "game") {
+                            const texto =
+                                preguntas[preguntaActual].respuestas[
+                                    lastAnswerIndex
+                                ];
+                            puntos = parseInt(
+                                (texto.match(/\|\s*(\d+)/) || [])[1] || 0
+                            );
+                        }
+
+                        if (currentScene === "todoonada") {
+                            puntos =
+                                preguntasTodoONada[currentTodoIndex].puntaje;
+                        }
+
+                        if (e.key === "a") scoreA += puntos;
+                        if (e.key === "b") scoreB += puntos;
+
+                        lastAnswerIndex = null;
+                        document.getElementById(
+                            "puntaje"
+                        ).textContent = `Equipo A: ${scoreA} — Equipo B: ${scoreB}`;
+                    }
+                }
+
+                if (e.key === " ") {
+                    sfxX.currentTime = 0;
+                    sfxX.play();
+                    const now = Date.now();
+                    if (now - lastSpaceTime < 500) {
+                        xCount++;
+                    } else {
+                        xCount = 1;
+                    }
+                    lastSpaceTime = now;
+                    xMultiple = Math.min(3, xCount);
+                    showX = true;
+                    xTimer = 60;
+                }
+
+                if (e.key === "n") {
+                    if (currentScene === "game") {
+                        preguntaActual++;
+                        if (preguntaActual >= preguntas.length) {
+                            currentScene = "todoonada";
+                            iniciarTodoONada();
+                            return;
+                        }
+                        respuestasMostradas = Array(8).fill(false);
+                        animaciones = Array(8).fill(null);
+                        lastAnswerIndex = null;
+                    } else if (currentScene === "todoonada") {
+                        currentTodoIndex++;
+                        if (currentTodoIndex >= preguntasTodoONada.length) {
+                            alert(
+                                `🎉 Fin del juego. Puntaje final\nA: ${scoreA}  B: ${scoreB}`
+                            );
+                            return;
+                        }
+                        mostrarPreguntaTodoONada();
+                    }
+                }
+
+                if (e.key === "p") {
+                    preguntaActual =
+                        (preguntaActual - 1 + preguntas.length) %
+                        preguntas.length;
+                    respuestasMostradas = Array(8).fill(false);
+                    animaciones = Array(8).fill(null);
+                    lastAnswerIndex = null;
+                }
+
+                if (e.key === "r") {
+                    scoreA = 0;
+                    scoreB = 0;
+                }
+            }
+
+            comenzar();
+        </script>
+    </body>
+</html>
