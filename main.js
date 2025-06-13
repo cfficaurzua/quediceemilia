@@ -1,4 +1,11 @@
-// juego.js
+import { gameState } from "./core/state.js";
+import { assets } from "./core/assets.js";
+import {
+    drawXMarks,
+    playSound,
+    normalizeString,
+    gradualVolumeFade,
+} from "./core/utils.js";
 import {
     preguntas,
     preguntasTodoONada,
@@ -14,18 +21,9 @@ const music = document.getElementById("music");
 const sfxOk = document.getElementById("sfx-ok");
 const sfxX = document.getElementById("sfx-x");
 
-const preguntaEl = document.getElementById("pregunta");
 const respuestaEl = document.getElementById("respuesta");
 const puntajeEl = document.getElementById("puntajeGlobal");
 
-const background = new Image();
-background.src = "backdrop.png";
-const splash = new Image();
-splash.src = "splashscreen.png";
-const xSprite = new Image();
-xSprite.src = "x.png";
-
-let currentScene = "splash";
 let respuestaUsuario = "";
 let preguntaActual = 0;
 let currentTodoIndex = 0;
@@ -33,7 +31,6 @@ let dineroRapidoIndex = 0;
 let dineroRapidoTimer = 20;
 let dineroRapidoScore = 0;
 let dineroRapidoInterval = null;
-let respuestasDineroRapido = [];
 let faseDineroRapido = 1;
 let respuestasIngresadas = Array(8).fill("");
 let puntajesMostrados = Array(8).fill(null);
@@ -41,48 +38,17 @@ let respuestaActualIndex = 0;
 const videoTodoONada = document.getElementById("videoTodoONada");
 const videoDineroRapido = document.getElementById("videoDineroRapido");
 
-let scoreA = 0;
-let scoreB = 0;
-let lastAnswer = null;
-let lastAnswerIndex = null;
-let respuestasMostradas = Array(8).fill(false);
-let animaciones = Array(8).fill(null);
-let showX = false;
-let xTimer = 0;
-let xCount = 0;
 let lastSpaceTime = 0;
-let xMultiple = 1;
-let sePermitioResponder = true;
 let fondoTodoONada = null;
 
-function gradualVolumeFade() {
-    const targetVolume = 0.1;
-    const duration = 20000;
-    const steps = 60;
-    let step = 0;
-    const volumeStep = (music.volume - targetVolume) / steps;
-
-    const interval = setInterval(() => {
-        step++;
-        music.volume = Math.max(targetVolume, music.volume - volumeStep);
-        if (step >= steps) clearInterval(interval);
-    }, duration / steps);
-}
-
-function updateUI(pregunta = "", respuesta = "") {
-    if (!(currentScene === "dineroRapido" && faseDineroRapido === 1)) {
-        preguntaEl.textContent = pregunta;
-    } else {
-        preguntaEl.textContent = "";
-    }
-
+function updateUI(respuesta = "") {
     respuestaEl.textContent = respuesta;
-    puntajeEl.textContent = `Equipo A: ${scoreA} — Equipo B: ${scoreB}`;
+    puntajeEl.textContent = `Equipo A: ${gameState.scoreA} — Equipo B: ${gameState.scoreB}`;
 }
 
 function drawSplash() {
     if (splash.complete) {
-        ctx.drawImage(splash, 0, 0, canvas.width, canvas.height);
+        ctx.drawImage(assets.splash, 0, 0, canvas.width, canvas.height);
         ctx.fillStyle = "white";
         ctx.font = "30px sans-serif";
         ctx.textAlign = "center";
@@ -96,7 +62,12 @@ function drawSplash() {
 
 function drawBackground() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.drawImage(background, 0, 0, canvas.width, canvas.height);
+
+    if (gameState.currentScene === "dineroRapido" && faseDineroRapido === 1) {
+        ctx.drawImage(assets.countdown, 0, 0, canvas.width, canvas.height);
+    } else {
+        ctx.drawImage(assets.background, 0, 0, canvas.width, canvas.height);
+    }
 }
 
 function drawTodoONada() {
@@ -110,33 +81,10 @@ function drawTodoONada() {
     ctx.fillStyle = "white";
     ctx.font = "48px sans-serif";
     ctx.textAlign = "center";
-    ctx.fillText(pregunta.pregunta, canvas.width / 2, canvas.height - 100);
+    ctx.fillText(pregunta.pregunta, canvas.width / 2, 50);
 
-    if (showX) {
-        const size = 500;
-        const centerX = canvas.width / 2;
-        const centerY = canvas.height / 2;
-        const gap = size + 40;
-        let positions = [];
-
-        if (xMultiple === 1) {
-            positions = [centerX - size / 2];
-        } else if (xMultiple === 2) {
-            positions = [
-                centerX - gap / 2 - size / 2,
-                centerX + gap / 2 - size / 2,
-            ];
-        } else {
-            positions = [
-                centerX - gap - size / 2,
-                centerX - size / 2,
-                centerX + gap - size / 2,
-            ];
-        }
-
-        positions.forEach((x) => {
-            ctx.drawImage(xSprite, x, centerY - size / 2, size, size);
-        });
+    if (gameState.showX) {
+        drawXMarks(ctx, assets.xSprite, gameState.xMultiple);
     }
 }
 
@@ -158,17 +106,17 @@ function drawGame() {
         const col = i < 4 ? col1X : col2X;
         const y = startY + (i % 4) * spacingY;
 
-        if (respuestasMostradas[i]) {
+        if (gameState.respuestasMostradas[i]) {
             let alpha = 1;
             let scale = 1;
 
-            if (animaciones[i]) {
-                alpha = animaciones[i].alpha;
-                scale = animaciones[i].scale;
-                animaciones[i].alpha = Math.min(1, alpha + 0.05);
-                animaciones[i].scale = Math.min(1, scale + 0.05);
+            if (gameState.animaciones[i]) {
+                alpha = gameState.animaciones[i].alpha;
+                scale = gameState.animaciones[i].scale;
+                gameState.animaciones[i].alpha = Math.min(1, alpha + 0.05);
+                gameState.animaciones[i].scale = Math.min(1, scale + 0.05);
                 if (alpha >= 1 && scale >= 1) {
-                    animaciones[i] = null;
+                    gameState.animaciones[i] = null;
                 }
             }
 
@@ -183,63 +131,39 @@ function drawGame() {
         }
     });
 
-    if (showX) {
-        const size = 500;
-        const centerX = canvas.width / 2;
-        const centerY = canvas.height / 2;
-        const gap = size + 40;
-        let positions = [];
-
-        if (xMultiple === 1) {
-            positions = [centerX - size / 2];
-        } else if (xMultiple === 2) {
-            positions = [
-                centerX - gap / 2 - size / 2,
-                centerX + gap / 2 - size / 2,
-            ];
-        } else {
-            positions = [
-                centerX - gap - size / 2,
-                centerX - size / 2,
-                centerX + gap - size / 2,
-            ];
-        }
-
-        positions.forEach((x) => {
-            ctx.drawImage(xSprite, x, centerY - size / 2, size, size);
-        });
+    if (gameState.showX) {
+        drawXMarks(ctx, assets.xSprite, gameState.xMultiple);
     }
 }
 
 function mostrarPreguntaGeneral() {
-    const p = preguntas[preguntaActual];
-    updateUI(p.texto, "");
-    respuestasMostradas = Array(8).fill(false);
-    animaciones = Array(8).fill(null);
-    lastAnswer = null;
-    lastAnswerIndex = null;
-    sePermitioResponder = true;
+    updateUI();
+    gameState.respuestasMostradas = Array(8).fill(false);
+    gameState.animaciones = Array(8).fill(null);
+    gameState.lastAnswer = null;
+    gameState.lastAnswerIndex = null;
+    gameState.sePermitioResponder = true;
 }
 
 function avanzarEscenaSiCorresponde() {
-    const todasRespondidas = respuestasMostradas.every((v) => v);
+    const todasRespondidas = gameState.respuestasMostradas.every((v) => v);
     if (todasRespondidas && preguntaActual === preguntas.length - 1) {
-        currentScene = "videoTodoONada";
+        gameState.currentScene = "videoTodoONada";
         videoTodoONada.style.display = "block";
         videoTodoONada.play();
-        updateUI("", "");
+        updateUI();
 
         videoTodoONada.onended = () => {
             videoTodoONada.style.display = "none";
-            currentScene = "todoonada";
+            gameState.currentScene = "todoonada";
         };
     }
 }
 
 function startGame() {
-    currentScene = "game";
+    gameState.currentScene = "game";
     splashVideo.remove();
-    music.play();
+    playSound(music);
     mostrarPreguntaGeneral();
     updateUI();
     gradualVolumeFade();
@@ -258,7 +182,7 @@ function startDineroRapidoTimer() {
             faseDineroRapido = 2;
             respuestaActualIndex = 0;
             respuestaUsuario = "";
-            updateUI("Responde ahora", "");
+            updateUI();
         }
     }, 1000);
 }
@@ -270,6 +194,7 @@ function drawDineroRapido() {
 
     if (faseDineroRapido === 1) {
         // Solo mostrar temporizador
+        ctx.font = "100px sans-serif";
         ctx.fillText(
             `${dineroRapidoTimer}s`,
             canvas.width / 2,
@@ -286,7 +211,7 @@ function drawDineroRapido() {
             ctx.fillText(
                 preguntasDineroRapido[respuestaActualIndex].pregunta,
                 canvas.width / 2,
-                100
+                50
             );
         }
 
@@ -317,96 +242,113 @@ function drawDineroRapido() {
 }
 
 function loop() {
-    if (currentScene === "splash") drawSplash();
-    else if (currentScene === "game") drawGame();
-    else if (currentScene === "todoonada") drawTodoONada();
-    else if (currentScene === "dineroRapido") drawDineroRapido();
-    if (showX && xTimer > 0) {
-        xTimer--;
-        if (xTimer <= 0) {
-            showX = false;
+    if (gameState.currentScene === "splash") drawSplash();
+    else if (gameState.currentScene === "game") drawGame();
+    else if (gameState.currentScene === "todoonada") drawTodoONada();
+    else if (gameState.currentScene === "dineroRapido") drawDineroRapido();
+    if (gameState.showX && gameState.xTimer > 0) {
+        gameState.xTimer--;
+        if (gameState.xTimer <= 0) {
+            gameState.showX = false;
         }
     }
     requestAnimationFrame(loop);
 }
 
 document.addEventListener("keydown", (e) => {
-    if (currentScene === "splash") return startGame();
+    if (gameState.currentScene === "splash") return startGame();
 
-    if (e.key === " " && currentScene != "dineroRapido") {
-        sfxX.currentTime = 0;
-        sfxX.play();
+    if (e.key === " " && gameState.currentScene != "dineroRapido") {
+        playSound(sfxX);
         const now = Date.now();
-        if (now - lastSpaceTime < 500) xCount++;
-        else xCount = 1;
+        if (now - lastSpaceTime < 500) gameState.xCount++;
+        else gameState.xCount = 1;
         lastSpaceTime = now;
-        xMultiple = Math.min(3, xCount);
-        showX = true;
-        xTimer = 60;
+        gameState.xMultiple = Math.min(3, gameState.xCount);
+        gameState.showX = true;
+        gameState.xTimer = 60;
     }
 
     if (
         e.key >= "1" &&
         e.key <= "8" &&
-        currentScene === "game" &&
-        sePermitioResponder
+        gameState.currentScene === "game" &&
+        gameState.sePermitioResponder
     ) {
         const index = parseInt(e.key) - 1;
-        if (!respuestasMostradas[index]) {
-            respuestasMostradas[index] = true;
-            animaciones[index] = { alpha: 0, scale: 0.8 };
-            sfxOk.currentTime = 0;
-            sfxOk.play();
-            lastAnswer = preguntas[preguntaActual].respuestas[index];
-            lastAnswerIndex = index;
-            sePermitioResponder = false;
+        if (!gameState.respuestasMostradas[index]) {
+            gameState.respuestasMostradas[index] = true;
+            gameState.animaciones[index] = { alpha: 0, scale: 0.8 };
+            playSound(sfxOk);
+            gameState.lastAnswer = preguntas[preguntaActual].respuestas[index];
+            gameState.lastAnswerIndex = index;
+            gameState.sePermitioResponder = false;
         }
     }
 
-    if (e.key === "1" && currentScene === "todoonada") {
+    if (e.key === "1" && gameState.currentScene === "todoonada") {
         const p = preguntasTodoONada[currentTodoIndex];
         respuestaEl.textContent = p.respuesta;
-        lastAnswer = p;
-        sfxOk.play();
+        gameState.lastAnswer = p;
+        gameState.lastAnswerIndex = currentTodoIndex;
+        playSound(sfxOk);
     }
 
-    if ((e.key === "a" || e.key === "b") && lastAnswerIndex !== null) {
-        const puntos =
-            preguntas[preguntaActual].respuestas[lastAnswerIndex].puntaje;
-        if (e.key === "a") scoreA += puntos;
-        if (e.key === "b") scoreB += puntos;
-        lastAnswerIndex = null;
-        sePermitioResponder = true;
+    if (
+        (e.key === "a" || e.key === "A" || e.key === "b" || e.key === "B") &&
+        gameState.lastAnswerIndex !== null
+    ) {
+        let puntos = 0;
+
+        if (gameState.currentScene === "game") {
+            puntos =
+                preguntas[preguntaActual].respuestas[gameState.lastAnswerIndex]
+                    .puntaje;
+        } else if (gameState.currentScene === "todoonada") {
+            puntos = preguntasTodoONada[gameState.lastAnswerIndex].puntaje;
+        }
+
+        if (e.key === "a" || e.key === "A") gameState.scoreA += puntos;
+        if (e.key === "b" || e.key === "B") gameState.scoreB += puntos;
+
+        gameState.lastAnswerIndex = null;
+        gameState.sePermitioResponder = true;
         updateUI();
-        avanzarEscenaSiCorresponde();
+
+        if (gameState.currentScene === "game") {
+            avanzarEscenaSiCorresponde();
+        }
     }
 
-    if (e.key === "n" && currentScene === "game") {
+    if ((e.key === "n" || e.key === "N") && gameState.currentScene === "game") {
         if (preguntaActual < preguntas.length - 1) {
             preguntaActual++;
             mostrarPreguntaGeneral();
         }
     }
 
-    if (e.key === "b" && currentScene === "game") {
+    if ((e.key === "p" || e.key === "P") && gameState.currentScene === "game") {
         if (preguntaActual > 0) {
             preguntaActual--;
             mostrarPreguntaGeneral();
         }
     }
 
-    if (e.key === "n" && currentScene === "todoonada") {
+    if (
+        (e.key === "n" || e.key === "N") &&
+        gameState.currentScene === "todoonada"
+    ) {
         currentTodoIndex++;
         if (currentTodoIndex < preguntasTodoONada.length) {
             updateUI();
         } else {
-            currentScene = "videoDineroRapido";
+            gameState.currentScene = "videoDineroRapido";
             videoDineroRapido.style.display = "block";
             videoDineroRapido.play();
 
             videoDineroRapido.onended = () => {
                 videoDineroRapido.style.display = "none";
-                currentScene = "dineroRapido";
+                gameState.currentScene = "dineroRapido";
                 dineroRapidoIndex = 0;
                 dineroRapidoTimer = 20;
                 faseDineroRapido = 1;
@@ -416,11 +358,11 @@ document.addEventListener("keydown", (e) => {
                 puntajesMostrados = Array(8).fill(null);
                 respuestaActualIndex = 0;
                 startDineroRapidoTimer();
-                updateUI(preguntasDineroRapido[dineroRapidoIndex].pregunta, "");
+                // updateUI(preguntasDineroRapido[dineroRapidoIndex].pregunta);
             };
         }
     }
-    if (currentScene === "dineroRapido") {
+    if (gameState.currentScene === "dineroRapido") {
         if (faseDineroRapido === 1) return;
 
         if (e.key === "Backspace") {
@@ -434,27 +376,20 @@ document.addEventListener("keydown", (e) => {
             e.key === "Enter" &&
             respuestaActualIndex < preguntasDineroRapido.length
         ) {
-            const normalizada = (str) =>
-                str
-                    .trim()
-                    .toLowerCase()
-                    .normalize("NFD")
-                    .replace(/[\u0300-\u036f]/g, "");
-
             const preguntaActual = preguntasDineroRapido[respuestaActualIndex];
             const match = preguntaActual.respuestas.find(
                 (res) =>
-                    normalizada(res.texto) === normalizada(respuestaUsuario)
+                    normalizeString(res.texto) ===
+                    normalizeString(respuestaUsuario)
             );
 
             const puntaje = match ? match.puntaje : 0;
             if (match) {
-                sfxOk.play();
+                playSound(sfxOk);
             } else {
-                sfxX.currentTime = 0;
-                sfxX.play();
-                showX = true;
-                xTimer = 60;
+                playSound(sfxX);
+                gameState.showX = true;
+                gameState.xTimer = 60;
             }
 
             respuestasIngresadas[respuestaActualIndex] = respuestaUsuario;
