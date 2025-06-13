@@ -32,7 +32,7 @@
             }
             #puntajeGlobal {
                 top: 90%;
-                font-size: 1.5em;
+                font-size: 3em;
             }
         </style>
     </head>
@@ -59,20 +59,43 @@
 
         <!-- Canvas principal -->
         <canvas id="juego"></canvas>
-
-        <!-- Imagen "Todo o Nada" -->
-        <img
-            id="todoSplash"
-            src="todoonadasplash.png"
+        <!-- Video Todo o Nada -->
+        <video
+            id="videoTodoONada"
+            src="todoonada.mp4"
+            playsinline
             style="
                 display: none;
                 position: absolute;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
                 width: 100vw;
                 height: 100vh;
                 object-fit: cover;
-                z-index: 50;
+                z-index: 20;
+                background: black;
             "
-        />
+        ></video>
+
+        <!-- Video Dinero Rápido -->
+        <video
+            id="videoDineroRapido"
+            src="dinerorapido.mp4"
+            playsinline
+            style="
+                display: none;
+                position: absolute;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                width: 100vw;
+                height: 100vh;
+                object-fit: cover;
+                z-index: 20;
+                background: black;
+            "
+        ></video>
 
         <!-- Audios -->
         <audio id="music" src="music.mp3" loop></audio>
@@ -85,6 +108,6 @@
         <div id="puntajeGlobal" class="overlay-text"></div>
 
         <!-- Lógica del juego separada -->
-        <script src="juego.js"></script>
+        <script type="module" src="main.js"></script>
     </body>
 </html>
