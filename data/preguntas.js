@@ -49,7 +49,7 @@ export const preguntas = [
     },
     {
         texto: "Qué color te recuerda más al colegio, ¿Rojo o Azul?",
-        respuestas: [{ texto: "Rojo", puntaje: 58 }],
+        respuestas: [{ texto: "Azul", puntaje: 58 }],
     },
     {
         texto: "Si roberto carlos tuviera un millón de amigos, ¿Qué podría hacer?",
