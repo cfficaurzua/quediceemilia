@@ -30,8 +30,9 @@ let currentTodoIndex = 0;
 let dineroRapidoIndex = 0;
 let dineroRapidoTimer = 20;
 let dineroRapidoScore = 0;
+let dineroRapidoRonda = 1;
 let dineroRapidoInterval = null;
-let faseDineroRapido = 1;
+let faseDineroRapido = 0;
 let respuestasIngresadas = Array(8).fill("");
 let puntajesMostrados = Array(8).fill(null);
 let respuestaActualIndex = 0;
@@ -191,6 +192,16 @@ function drawDineroRapido() {
     ctx.fillStyle = "white";
     ctx.font = "40px sans-serif";
     ctx.textAlign = "center";
+    if (faseDineroRapido === 0) {
+        // Esperando que el usuario esté listo
+        ctx.font = "60px sans-serif";
+        ctx.fillText(
+            "Presiona ENTER para comenzar",
+            canvas.width / 2,
+            canvas.height / 2
+        );
+        return;
+    }
 
     if (faseDineroRapido === 1) {
         // Solo mostrar temporizador
@@ -246,6 +257,7 @@ function loop() {
     else if (gameState.currentScene === "game") drawGame();
     else if (gameState.currentScene === "todoonada") drawTodoONada();
     else if (gameState.currentScene === "dineroRapido") drawDineroRapido();
+    else if (gameState.currentScene === "resultadoFinal") drawResultadoFinal();
     if (gameState.showX && gameState.xTimer > 0) {
         gameState.xTimer--;
         if (gameState.xTimer <= 0) {
@@ -256,88 +268,119 @@ function loop() {
 }
 
 document.addEventListener("keydown", (e) => {
-    if (gameState.currentScene === "splash") return startGame();
+    const key = e.key.toLowerCase();
 
-    if (e.key === " " && gameState.currentScene != "dineroRapido") {
-        playSound(sfxX);
-        const now = Date.now();
-        if (now - lastSpaceTime < 500) gameState.xCount++;
-        else gameState.xCount = 1;
-        lastSpaceTime = now;
-        gameState.xMultiple = Math.min(3, gameState.xCount);
-        gameState.showX = true;
-        gameState.xTimer = 60;
+    if (gameState.currentScene === "splash") {
+        return startGame();
+    }
+
+    if (gameState.currentScene === "dineroRapido") {
+        handleDineroRapidoInput(e);
+    }
+
+    if (key === " ") {
+        handleSpacePress();
+        return;
     }
 
     if (
-        e.key >= "1" &&
-        e.key <= "8" &&
+        isNumberKey(key) &&
         gameState.currentScene === "game" &&
         gameState.sePermitioResponder
     ) {
-        const index = parseInt(e.key) - 1;
-        if (!gameState.respuestasMostradas[index]) {
-            gameState.respuestasMostradas[index] = true;
-            gameState.animaciones[index] = { alpha: 0, scale: 0.8 };
-            playSound(sfxOk);
-            gameState.lastAnswer = preguntas[preguntaActual].respuestas[index];
-            gameState.lastAnswerIndex = index;
-            gameState.sePermitioResponder = false;
-        }
+        handleGameAnswerKey(parseInt(key) - 1);
+        return;
     }
 
-    if (e.key === "1" && gameState.currentScene === "todoonada") {
-        const p = preguntasTodoONada[currentTodoIndex];
-        respuestaEl.textContent = p.respuesta;
-        gameState.lastAnswer = p;
-        gameState.lastAnswerIndex = currentTodoIndex;
-        playSound(sfxOk);
+    if (key === "1" && gameState.currentScene === "todoonada") {
+        handleTodoONadaAnswer();
+        return;
     }
 
-    if (
-        (e.key === "a" || e.key === "A" || e.key === "b" || e.key === "B") &&
-        gameState.lastAnswerIndex !== null
-    ) {
-        let puntos = 0;
-
-        if (gameState.currentScene === "game") {
-            puntos =
-                preguntas[preguntaActual].respuestas[gameState.lastAnswerIndex]
-                    .puntaje;
-        } else if (gameState.currentScene === "todoonada") {
-            puntos = preguntasTodoONada[gameState.lastAnswerIndex].puntaje;
-        }
-
-        if (e.key === "a" || e.key === "A") gameState.scoreA += puntos;
-        if (e.key === "b" || e.key === "B") gameState.scoreB += puntos;
-
-        gameState.lastAnswerIndex = null;
-        gameState.sePermitioResponder = true;
-        updateUI();
-
-        if (gameState.currentScene === "game") {
-            avanzarEscenaSiCorresponde();
-        }
+    if ((key === "a" || key === "b") && gameState.lastAnswerIndex !== null) {
+        assignScore(key);
+        return;
     }
 
-    if ((e.key === "n" || e.key === "N") && gameState.currentScene === "game") {
-        if (preguntaActual < preguntas.length - 1) {
-            preguntaActual++;
-            mostrarPreguntaGeneral();
-        }
+    if (key === "n") {
+        handleNextKey();
+        return;
     }
 
-    if ((e.key === "p" || e.key === "P") && gameState.currentScene === "game") {
+    if (key === "p" && gameState.currentScene === "game") {
         if (preguntaActual > 0) {
             preguntaActual--;
             mostrarPreguntaGeneral();
         }
+        return;
+    }
+});
+
+// === Sub-funciones ===
+
+function isNumberKey(key) {
+    return /^[1-8]$/.test(key);
+}
+
+function handleSpacePress() {
+    playSound(sfxX);
+    const now = Date.now();
+    if (now - lastSpaceTime < 500) gameState.xCount++;
+    else gameState.xCount = 1;
+    lastSpaceTime = now;
+    gameState.xMultiple = Math.min(3, gameState.xCount);
+    gameState.showX = true;
+    gameState.xTimer = 60;
+}
+
+function handleGameAnswerKey(index) {
+    if (!gameState.respuestasMostradas[index]) {
+        gameState.respuestasMostradas[index] = true;
+        gameState.animaciones[index] = { alpha: 0, scale: 0.8 };
+        playSound(sfxOk);
+        gameState.lastAnswer = preguntas[preguntaActual].respuestas[index];
+        gameState.lastAnswerIndex = index;
+        gameState.sePermitioResponder = false;
+    }
+}
+
+function handleTodoONadaAnswer() {
+    const p = preguntasTodoONada[currentTodoIndex];
+    respuestaEl.textContent = p.respuesta;
+    gameState.lastAnswer = p;
+    gameState.lastAnswerIndex = currentTodoIndex;
+    playSound(sfxOk);
+}
+
+function assignScore(key) {
+    let puntos = 0;
+    if (gameState.currentScene === "game") {
+        puntos =
+            preguntas[preguntaActual].respuestas[gameState.lastAnswerIndex]
+                .puntaje;
+    } else if (gameState.currentScene === "todoonada") {
+        puntos = preguntasTodoONada[gameState.lastAnswerIndex].puntaje;
     }
 
-    if (
-        (e.key === "n" || e.key === "N") &&
-        gameState.currentScene === "todoonada"
-    ) {
+    if (key === "a") gameState.scoreA += puntos;
+    if (key === "b") gameState.scoreB += puntos;
+
+    gameState.lastAnswerIndex = null;
+    gameState.sePermitioResponder = true;
+    updateUI();
+
+    if (gameState.currentScene === "game") {
+        avanzarEscenaSiCorresponde();
+    }
+}
+
+function handleNextKey() {
+    if (gameState.currentScene === "game") {
+        if (preguntaActual < preguntas.length - 1) {
+            preguntaActual++;
+            mostrarPreguntaGeneral();
+        }
+    } else if (gameState.currentScene === "todoonada") {
         currentTodoIndex++;
         if (currentTodoIndex < preguntasTodoONada.length) {
             updateUI();
@@ -351,55 +394,93 @@ document.addEventListener("keydown", (e) => {
                 gameState.currentScene = "dineroRapido";
                 dineroRapidoIndex = 0;
                 dineroRapidoTimer = 20;
-                faseDineroRapido = 1;
-                dineroRapidoScore = 0;
+                faseDineroRapido = 0; // Espera que el usuario presione ENTER
                 respuestaUsuario = "";
-                respuestasIngresadas = Array(8).fill("");
-                puntajesMostrados = Array(8).fill(null);
                 respuestaActualIndex = 0;
-                startDineroRapidoTimer();
-                // updateUI(preguntasDineroRapido[dineroRapidoIndex].pregunta);
+
+                if (dineroRapidoRonda === 1) {
+                    respuestasIngresadas = Array(8).fill("");
+                    puntajesMostrados = Array(8).fill(null);
+                }
             };
         }
     }
-    if (gameState.currentScene === "dineroRapido") {
-        if (faseDineroRapido === 1) return;
+}
+function drawResultadoFinal() {
+    drawBackground();
+    ctx.fillStyle = "white";
+    ctx.font = "64px sans-serif";
+    ctx.textAlign = "center";
 
-        if (e.key === "Backspace") {
-            respuestaUsuario = respuestaUsuario.slice(0, -1);
-        } else if (
-            e.key.length === 1 &&
-            /^[a-zA-ZñÑáéíóúÁÉÍÓÚ ]$/.test(e.key)
-        ) {
-            respuestaUsuario += e.key;
-        } else if (
-            e.key === "Enter" &&
-            respuestaActualIndex < preguntasDineroRapido.length
-        ) {
-            const preguntaActual = preguntasDineroRapido[respuestaActualIndex];
-            const match = preguntaActual.respuestas.find(
-                (res) =>
-                    normalizeString(res.texto) ===
-                    normalizeString(respuestaUsuario)
-            );
+    const mensaje =
+        dineroRapidoScore >= 200
+            ? "¡Ganaron el Dinero Rápido!"
+            : "No alcanzaron los 200 puntos";
 
-            const puntaje = match ? match.puntaje : 0;
-            if (match) {
-                playSound(sfxOk);
+    ctx.fillText(mensaje, canvas.width / 2, canvas.height / 2);
+    ctx.fillText(
+        `Puntaje: ${dineroRapidoScore}`,
+        canvas.width / 2,
+        canvas.height / 2 + 80
+    );
+}
+
+function handleDineroRapidoInput(e) {
+    if (faseDineroRapido === 0 && e.key === "Enter") {
+        faseDineroRapido = 1;
+        startDineroRapidoTimer();
+        return;
+    }
+    if (faseDineroRapido === 1) return;
+
+    if (e.key === "Backspace") {
+        respuestaUsuario = respuestaUsuario.slice(0, -1);
+    } else if (e.key.length === 1 && /^[a-zA-ZñÑáéíóúÁÉÍÓÚ ]$/.test(e.key)) {
+        respuestaUsuario += e.key;
+    } else if (
+        e.key === "Enter" &&
+        respuestaActualIndex < preguntasDineroRapido.length
+    ) {
+        const pregunta = preguntasDineroRapido[respuestaActualIndex];
+        const match = pregunta.respuestas.find(
+            (res) =>
+                normalizeString(res.texto) === normalizeString(respuestaUsuario)
+        );
+
+        const puntaje = match ? match.puntaje : 0;
+        match
+            ? playSound(sfxOk)
+            : (playSound(sfxX),
+              (gameState.showX = true),
+              (gameState.xTimer = 60));
+        if (
+            respuestasIngresadas.some(
+                (r) => normalizeString(r) === normalizeString(respuestaUsuario)
+            )
+        ) {
+            playSound(sfxX);
+            gameState.showX = true;
+            gameState.xTimer = 60;
+            return; // no avanzar
+        }
+        respuestasIngresadas[respuestaActualIndex] = respuestaUsuario;
+        puntajesMostrados[respuestaActualIndex] = puntaje;
+        dineroRapidoScore += puntaje;
+
+        respuestaUsuario = "";
+        respuestaActualIndex++;
+        if (respuestaActualIndex >= preguntasDineroRapido.length) {
+            if (dineroRapidoRonda === 1) {
+                // Pasa a segunda ronda
+                dineroRapidoRonda = 2;
+                respuestaActualIndex = 0;
+                faseDineroRapido = 0;
             } else {
-                playSound(sfxX);
-                gameState.showX = true;
-                gameState.xTimer = 60;
+                // Fin del dinero rápido, mostrar resultado final
+                gameState.currentScene = "resultadoFinal";
             }
-
-            respuestasIngresadas[respuestaActualIndex] = respuestaUsuario;
-            puntajesMostrados[respuestaActualIndex] = puntaje;
-            dineroRapidoScore += puntaje;
-
-            respuestaUsuario = "";
-            respuestaActualIndex++;
         }
     }
-});
+}
 
 loop();
